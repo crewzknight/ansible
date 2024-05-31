@@ -1,0 +1,21 @@
+---
+- name: Ping les appareils dans cisco
+  hosts: cisco
+  gather_facts: no
+
+  tasks:
+      - name: Show logs
+        ios_command:
+          commands: show log last 400
+        register: output
+
+      - name: Show output
+        debug:
+          var: output.stdout
+
+      - name: Get timestamp from the system
+        shell: "date +%Y-%m-%d-%H-%M-%S"
+        register: tstamp
+
+      - name: Backup logs
+        copy: content="{{ output.stdout[0] }}" dest="./logs/{{ inventory_hostname }}.log"

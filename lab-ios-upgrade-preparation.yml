@@ -1,0 +1,54 @@
+#---
+- name: Mise à niveau des CISCO IOS
+  hosts: labcisco
+
+  vars:
+    upgrade_ios_version: 17.11.01
+    upgrade_filename: cat9k_iosxe.17.11.01.SPA.bin
+
+  tasks:
+    - name: "Comparatif de la version actuel avec la nouvelle version"
+      ios_facts:
+    - debug:
+        msg:
+          - "Current version is {{ ansible_net_version }}"
+          - "Upgrade image is {{ upgrade_ios_version }}"
+
+    - debug:
+        msg:
+          - "La version installé est inférieur, alors on procède avec la mise à niveau"
+      when: ansible_net_version != upgrade_ios_version
+
+    - name: "Destruire les anciens fichiers inactifs"
+      cli_command:
+        command: "install remove inactive"
+        prompt: 'Do you want to remove the above files'
+        answer: 'y'
+      register: output
+
+    - name: "Imprimer à l'écran les réponses de l'appareil"
+      debug:
+        var: output.stdout
+
+    - name: "Activer le serveur SCP - pour transfert sécurisé"
+      ios_command:
+        commands:
+          - "conf t"
+          - "ip scp server enable"
+      register: output
+      when: ansible_net_version != upgrade_ios_version
+
+    - name: "Imprimer à l'écran les réponses de l'appareil"
+      debug:
+        var: output.stdout
+      when: ansible_net_version != upgrade_ios_version
+
+    - name: "Copier l'image par SCP - ceci peut prendre env. 4 à 20 minutes"
+      shell: "scp -v ./updates/{{ upgrade_filename }}  ansible-conn@{{ ansible_ssh_host }}:/{{ upgrade_filename }}"
+      register: output
+      when: ansible_net_version != upgrade_ios_version
+
+    - name: "Imprimer à l'écran les réponses de l'appareil"
+      debug:
+        var: output.stdout
+      when: ansible_net_version != upgrade_ios_version
